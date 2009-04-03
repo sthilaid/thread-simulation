@@ -322,21 +322,31 @@
                               (yield)))))
     (simple-boot c1 c2 c4 c3)))
 
-(define-test test-dynamic-handlers "allonotutu" 'ok
+(define-test test-dynamic-handlers "allononotutututuallono" 'ok
   (let ((c1 (new corout 'c1 (lambda ()
                                   (! (self) 'allo)
-                                  (! (self) 'allo)
-                                  (! (self) 'tutu)
                                   (with-dynamic-handlers
                                    ((allo (display 'allo)))
                                    (recv (toto (display 'toto))
                                          (after 0.02 (display 'no))))
                                   (recv (toto (display 'toto))
                                         (after 0.02 (display 'no)))
+                                  (! (self) 'tutu)
+                                  (! (self) 'allo)
                                   (with-dynamic-handlers
-                                   ((tutu (display 'allo)))
+                                   ((allo (display 'allo)))
                                    (recv (tutu (display 'tutu))
                                          (after 0.02 (display 'no))))
+                                  ;; still 'allo in msg box...
+                                  (! (self) 'tutu)
+                                  (with-dynamic-handlers
+                                   ((allo (display 'allo)))
+                                   (recv (tutu (display 'tutu))
+                                         (after 0.02 (display 'no))))
+                                  ;; still 'allo in msg box...
+                                  (with-dynamic-handlers
+                                   ((allo (display 'allo)))
+                                   (recv (after 0.02 (display 'no))))
                                    'ok))))
         (simple-boot c1)))
 
@@ -386,3 +396,13 @@
                               (! c1 'toto!)))))
     (with-exception-catcher (lambda (e) 'ok)
                             (lambda () (simple-boot c1 c2)))))
+
+(define-test test-dynamic-handlers-return "allototo" 'ok
+  (let ((c1 (new corout 'c1 (lambda ()
+                                  (! (self) 'allo)
+                                  (with-dynamic-handlers
+                                   ((allo (! (self) 'toto) (display 'allo)))
+                                   (recv (toto (display 'toto))
+                                         (after 0.02 (display 'no))))
+                                  'ok))))
+        (simple-boot c1)))
