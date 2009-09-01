@@ -48,11 +48,30 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;; High Order Functions ;;;;;;;;;;;;;;;;;;;;;;;;
 
+(define (curry2 f x)
+  (lambda (y) (f x y)))
+
+(define (curry2* f x)
+  (lambda y (##apply f (cons x y))))
+
+(define (curry3 f x y)
+  (lambda (z) (f x y z)))
+
+(define (curry3* f x y)
+  (lambda z (##apply f (cons x (cons y z)))))
+
 (define (flip f x)
   (lambda (y) (f y x)))
 
-(define (curry-flip f)
-  (lambda (x) (lambda (y) ((f y) x))))
+(define (curry-flip f x)
+  (lambda (y) ((f y) x)))
+
+(define (identity x) x)
+
+(define (compose f . gs)
+  (lambda (x) (fold-l (lambda (acc f) (f acc))
+                      x
+                      (reverse (cons f gs)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;; list operations ;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -108,11 +127,13 @@
    ((pred (car list)) (cons (car list) (filter pred (cdr list))))
    (else (filter pred (cdr list)))))
 
-(define (exists pred list)
+(define (exists pred list . lists)
   (cond
-   ((not (pair? list)) #f)
-   ((pred (car list)) (car list))
-   (else  (exists pred (cdr list)))))
+   ((or (not (pair? list))
+        (pair? (filter null? lists))) #f)
+   ((apply pred (car list) (map car lists))
+    (apply values (car list) (map car lists)))
+   (else  (apply exists pred (cdr list) (map cdr lists)))))
 
 ;; returns the first result of the application of pred to a list
 ;; element that is not #f.
@@ -122,11 +143,11 @@
    ((pred (car list)) => (lambda (x) x))
    (else  (find-value pred (cdr list)))))
 
-(define (forall pred list)
+(define (forall pred list . lists)
   (cond
    ((not (pair? list)) #t)
-   ((not (pred (car list))) #f)
-   (else (forall pred (cdr list)))))
+   ((not (apply pred (car list) (map car lists))) #f)
+   (else (apply forall pred (cdr list) (map cdr lists)))))
 
 (define (fold-l f acc list)
   (if (not (pair? list))
@@ -203,16 +224,27 @@
         '())))
 
 
-(define (quick-sort smaller? equal? greater? lst)
-  (if (or (not (pair? lst))
-          (null? (cdr lst)))
-      lst
-      (let ((pivot (car lst)))
-        (append (quick-sort smaller? equal? greater?
-                            (filter (lambda (x) (smaller? x pivot)) lst))
-                (filter (lambda (x) (equal? x pivot)) lst)
-                (quick-sort smaller? equal? greater?
-                            (filter (lambda (x) (greater? x pivot)) lst))))))
+(define (quick-sort smaller? equal? greater? lst
+                    #!key (accessor identity))
+  (let loop ((lst lst))
+   (if (or (not (pair? lst))
+           (null? (cdr lst)))
+       lst
+       (let ((pivot (accessor (car lst))))
+         (append
+          (loop (filter (lambda (x) (smaller? (accessor x) pivot)) lst))
+          (filter (lambda (x) (equal? (accessor x) pivot)) lst)
+          (loop (filter (lambda (x) (greater? (accessor x) pivot)) lst)))))))
+
+(define (insert-in-ordered-list smaller obj lst #!key (accessor identity))
+  (let ((obj-value (accessor obj)))
+    (let loop ((lst lst) (acc '()))
+      (cond ((not (pair? lst))
+             (reverse (cons obj acc)))
+            ((smaller obj-value (accessor (car lst)))
+             (append (reverse acc) (cons obj lst)))
+            (else
+             (loop (cdr lst) (cons (car lst) acc)))))))
 
 (define-macro (extremum-fonction comparator opposite-extremum)
   (let ((lst-sym (gensym 'lst-sym))
@@ -241,12 +273,40 @@
                                    (cons v1s vss)
                                    (map (lambda (x) '()) (cons v1 vs)))))))))
 
+(define (map-with-index f l . ls)
+  (let loop ((i 0) (l l) (ls ls) (acc '()))
+    (if (not (pair? l))
+        (reverse acc)
+        (loop (+ i 1) (cdr l) (map cdr ls)
+              (cons (apply f i (car l) (map car ls)) acc)))))
+
+(define (for-each-with-index f l . ls)
+  (let loop ((i 0) (l l) (ls ls))
+    (if (pair? l)
+        (begin (apply f i (car l) (map car ls))
+               (loop (+ i 1) (cdr l) (map cdr ls))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;; Math stuff ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(define (fixnum->flonum x)
+  (cond ((##fixnum? x) (##fixnum->flonum x))
+        ((flonum?   x) x)
+        (else       (error "Cannot convert number to flonum: " x))))
 
 (define (1+ x) (+ x 1))
 (define (1- x) (- x 1))
 (define (one? x) (eq? x 1))
+
+(define (clamp-floor epsilon min-value n)
+  (if (>= (- n epsilon) min-value)
+      n
+      min-value))
+(define (clamp-ceil epsilon max-value n)
+  (if (<= (+ n epsilon) max-value)
+      n
+      max-value))
+(define (clamp min-value max-value n #!optional (epsilon 0))
+  (clamp-ceil epsilon max-value (clamp-floor epsilon min-value n)))
 
 (define (exactisize n)
   (inexact->exact (floor n)))
@@ -309,9 +369,9 @@
   (set! current-mode gather-init-data)
   dispatcher)
 
-(define (create-bounded-simple-moving-avg bound)
+(define (create-bounded-simple-moving-avg bound #!key init-value)
   (define data '())
-  (define SMA 'N/A)
+  (define SMA (if init-value init-value 'N/A))
   (define current-mode #f)
   (define max -inf.0)
   (define min +inf.0)
@@ -531,7 +591,34 @@
 (define (make-set . values)
   (list->set eq? values))
 
-;; Randomize current mrg's seed
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; Using the usual terminology: m rows by n columns
+(define (make-matrix2d-with-index m n #!optional (init-value (lambda (i j) 0)))
+  (include "scm-lib-macro.scm")
+  (let ((row-container (make-vector m)))
+    (for i 0 (< i m)
+         (let ((row-vector (make-vector n)))
+           (for j 0 (< j n) (vector-set! row-vector j (init-value i j)))
+           (vector-set! row-container i row-vector)))
+    row-container))
+
+(define (make-matrix2d m n #!optional (init-value 0))
+  (make-matrix2d-with-index m n (lambda (i j) init-value)))
+
+(define (matrix2d-set! mat i j value)
+  (vector-set! (vector-ref mat i) j value))
+
+(define (matrix2d-get mat i j)
+  (vector-ref (vector-ref mat i) j))
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; RNG seed randomization, !! must be at the end of this file !!
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; Randomize current rng's seed
 (random-source-randomize! default-random-source)
-
-

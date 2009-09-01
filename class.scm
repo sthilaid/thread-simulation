@@ -1,138 +1,10 @@
 ;; Very simple object system which focuses on runtime speed.
 
+(include "class_.scm")
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Macro expansion time env
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-;; Initializes the global define-class macro-expension-time
-;; environnment. This macro must be called
-(define-macro (init)
-  ;; macro exp time librairy
-  (eval
-   '(begin
-      (include "scm-lib-macro.scm")
-      (include "scm-lib.scm")
-      
-      ;; method expansion mode
-      (define mode 'iterative) ; iterative as default
-      
-      ;; starts to 2 because 0/1 are reserved for the class id and supers
-      (define desc-index 1) 
-      (define mt-class-table (make-table test: eq?))
-      (define mt-meth-table (make-table test: eq?))
-      (define (next-desc-index)
-        (set! desc-index (+ desc-index 1))
-        desc-index)
-      
-      (define (meth-name sign) (if (not (list? sign))
-                                   (error 'bad-signature-syntax)
-                                   (car sign)))
-      (define any-type '*)
-
-      (define (symbol-append s1 . ss)
-          (string->symbol (apply string-append
-                                 (symbol->string s1)
-                                 (map symbol->string ss))))
-
-      ;;;;;;;;;;;;;;; Naming convention abstractions ;;;;;;;;;;;;;;;
-      (define (gen-accessor-name class-name var)
-        (symbol-append class-name '- var))
-      (define (gen-setter-name class-name var)
-        (symbol-append class-name '- var '-set!))
-      (define (gen-predicate-name class-name)
-        (symbol-append class-name '?))
-      (define (class-desc-name  class-name)
-        (symbol-append class-name '-class-descriptor))
-      (define (gen-instantiator-name name)
-        (symbol-append 'make- name '-instance))
-
-      (define (gen-method-desc-name sign)
-        (symbol-append (meth-name sign) '-meth-desc))
-
-      (define (gen-method-table-name name)
-        (symbol-append name '-meth-table))
-      
-
-      ;;;;;;;;;;;;;;; Data structure used ;;;;;;;;;;;;;;;
-
-      (define (make-class-info field-indices descriptor)
-        (vector field-indices descriptor))
-      (define (class-info-fi info) (vector-ref info 0))
-      (define (class-info-desc info) (vector-ref info 1))
-      
-      (define (make-class-desc id supers num-fields)
-        ;; add 2 to include place holders for the id and supers
-        (let ((desc (make-vector (+ num-fields 2) 'unknown-slot))
-              (all-supers
-               (apply generic-multi-union eq?
-                      supers
-                      (map (lambda (s) (class-desc-supers
-                                        (class-info-desc
-                                         (table-ref mt-class-table s))))
-                           supers))))
-          (vector-set! desc 0 id)
-          (vector-set! desc 1 all-supers)
-          desc))
-      (define (class-desc-id desc) (vector-ref desc 0))
-      (define (class-desc-supers desc) (vector-ref desc 1))
-      (define (class-desc-indices-vect desc) (vector-ref desc 2))
-
-
-      (define (make-slot type index options inherited?)
-        (vector type index options inherited?))
-      (define (is-class-slot? slot-info)
-        (and (vector? slot-info)
-             (eq? (slot-type slot-info) class-slot:)))
-      (define (is-instance-slot? slot-info)
-        (and (vector? slot-info)
-             (eq? (slot-type slot-info) slot:)))
-      (define (slot-type slot-info)
-        (vector-ref slot-info 0))
-      (define (slot-index slot-info)
-        (vector-ref slot-info 1))
-      (define (slot-options slot-info)
-        (vector-ref slot-info 2))
-      (define (slot-inherited? slot-info)
-        (vector-ref slot-info 3))
-
-      ;; returns the slot hooks, if any is present.
-      (define (slot-read-hooks? slot-info)
-        (let* ((options (slot-options slot-info))
-               (hooks (assq read-hooks: options)))
-          (if hooks (cdr hooks) #f)))
-      (define (slot-write-hooks? slot-info)
-        (let* ((options (slot-options slot-info))
-               (hooks (assq write-hooks: options)))
-          (if hooks (cdr hooks) #f)))
-        
-      (define (make-mt-generic-function name args)
-        (vector name args (make-table test: equal?)))
-      (define (mt-generic-function-name gf) (vector-ref gf 0))
-      (define (mt-generic-function-args gf) (vector-ref gf 1))
-      (define (mt-generic-function-instances gf) (vector-ref gf 2))
-      (define (mt-generic-function-instances-add! gf instance)
-        (table-set! (mt-generic-function-instances gf)
-                    (method-types instance)
-                    instance))
-      (define (mt-generic-function-instances-list gf)
-        (table->list (mt-generic-function-instances gf)))
-      (define (mt-generic-function-get-instance gf types)
-        (table-ref (mt-generic-function-instances gf) types #f))
-      (define (mt-generic-function-instances-number gf)
-        (table-length (mt-generic-function-instances gf)))
-      
-      
-      (define make-method vector) ; (make-method id types body)
-      (define (method-id meth) (vector-ref meth 0))
-      (define (method-types meth) (vector-ref meth 1))
-      (define (method-body meth) (vector-ref meth 2)))
-   ))
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; define-class
+;;; define-class
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (define-macro (define-class name supers . fields) 
@@ -468,14 +340,7 @@
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Generic constructors (new)
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(define-macro (new class-name . params)
-  `(init! (,(gen-instantiator-name class-name)) ,@params))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Generic methods
+;;; Generic methods
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (define-macro (define-generic name)
@@ -489,16 +354,23 @@
          ;; parameters was constant. Now (map get-class-id...) is
          ;; performed at runtime.
          (let ((types
-                (if cast
-                    (assert-cast args cast)
-                    (map get-class-id args))))
+                (cond
+                 ((pair? cast) cast)
+                 (else (map get-class-id args)))))
            (cond
             ((or (generic-function-get-instance ,(gen-method-table-name name)
                                                 types)
                  (find-polymorphic-instance? ,(gen-method-table-name name)
                                              types))
              => (lambda (method)
-                  (apply (method-body method) args)))
+                  (parameterize ((___call-next-method
+                                  (lambda ()
+                                    (apply ,name
+                                           cast:
+                                           (map get-supers
+                                                (current-method-types))
+                                           args))))
+                    (apply (method-body method) args))))
             (else
              (error (string-append
                      "Unknown method: "
@@ -534,52 +406,26 @@
       ((table-ref mt-meth-table (name) #f) =>
        (lambda (gen-fun)
          (receive (args types) (parse-args (cdr signature))
-                  (mt-generic-function-instances-add!
-                   gen-fun
-                   (make-method (name) types `(lambda ,args ,bod ,@bods)))
-                  `(generic-function-instances-add!
-                    ,(gen-method-table-name (name))
-                    (make-method ',(name) ',types
-                                 (lambda ,args ,bod ,@bods))))))
+           (let ((parameterized-body
+                  `(lambda ,args
+                     (parameterize ((current-method-types ',types))
+                       ,bod ,@bods))))
+             ;; macro exp time book-keeping
+            (mt-generic-function-instances-add!
+             gen-fun
+             (make-method (name) types parameterized-body))
+            ;; runtime book-keeping
+            `(generic-function-instances-add!
+              ,(gen-method-table-name (name))
+              (make-method ',(name) ',types ,parameterized-body))))))
       (else
        `(begin
           (define-generic ,(name))
           (define-method ,signature ,bod ,@bods)))))))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Utilities
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(define-macro (update! obj class field f)
-  (let ((objval (gensym 'objval)))
-   `(let ((,objval ,obj))
-      (,(gen-setter-name class field) ,objval
-       (,f (,(gen-accessor-name class field) ,objval))))))
-
-(define-macro (set-fields! obj class field-val-list)
-  (let ((obj-ptr (gensym 'obj)))
-    `(let ((,obj-ptr ,obj))
-       ,@(map (lambda (field-val)
-                (if (not (and (list? field-val)
-                              (= (length field-val) 2)))
-                    (error "invalid set-fields! field syntax"))
-                (let ((field-name (car field-val))
-                      (val        (cadr field-val)))
-                  `(,(gen-setter-name class field-name) ,obj-ptr ,val)))
-              field-val-list)
-       ,obj-ptr)))
-
-
-;;;;;;;;;;;;;;;;;;;;;;;; Runtime stuff ;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-;; Loading of the macro time lib
-(init)
-
-
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Runtime lib
+;;; Runtime lib
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; Warning: The class descriptor data structure should not be
@@ -644,6 +490,8 @@
        (vector? (instance-class-descriptor obj))
        (symbol? (class-desc-id (instance-class-descriptor obj)))))
 
+;; Temporarily removed because slows the code down and cannot support
+;; cast to a list of classes lightly.
 (define (assert-cast args types)
   (define (show . args)
     (for-each (lambda (x) (if (string? x) (display x) (write x))) args))
@@ -701,6 +549,11 @@
         0
         (length (class-desc-supers (find-class? type)))))
 
+(define (get-supers type)
+  (if (any-type? type)
+      '*
+      (class-desc-supers (find-class? type))))
+
 (define (sort-methods method-lst)
     (define (method-comparator fun)
       (lambda (m1 m2)
@@ -716,7 +569,14 @@
 
 (define (equivalent-types? instance-types param-types)
     (if (pair? instance-types)
-        (and (is-subclass? (car param-types) (car instance-types))
+        (and (if (pair? (car param-types))
+                 ;; a list of param types is used to implement the
+                 ;; call-next-method functionnality by providing the list
+                 ;; of the super classes here...
+                 (let ((instance-type (car instance-types)))
+                   (exists (lambda (x) (is-subclass? x instance-type))
+                           (car param-types)))
+                 (is-subclass? (car param-types) (car instance-types)))
              (equivalent-types? (cdr instance-types) (cdr param-types)))
         #t))
 
@@ -728,7 +588,16 @@
     (exists (lambda (method) (equivalent-types? (method-types method)
                                                 types))
             (filter (lambda (i) (= (length (method-types i)) args-nb))
-             sorted-instances))))
+                    sorted-instances))))
+
+;; The call-next-method works well with single inheritance, but might
+;; give unexpected results with multiple inheritance, as the
+;; next-method called will depend on the sort-methods function which
+;; does *not* discriminate method instances with equal number of super
+;; classes and thus might choose arbitriraly which one will be called.
+(define ___call-next-method  (make-parameter #f))
+(define current-method-types (make-parameter #f))
+(define (call-next-method) ((___call-next-method)))
 
 
 (define-generic describe)
@@ -745,4 +614,3 @@
                         (transformer obj)
                         obj)))))
     (set! ##wr new-wr)))
-
