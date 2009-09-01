@@ -406,3 +406,18 @@
                                          (after 0.02 (display 'no))))
                                   'ok))))
         (simple-boot c1)))
+
+(define-test test-corout-timer-yield "...???" 'ok
+  (let* ((aux (new corout 'aux (lambda ()
+                                 (let loop ((i 0))
+                                   (if (< i 5)
+                                       (begin
+                                         (thread-sleep! 0.1)
+                                         (write i)
+                                         (loop (+ i 1)))
+                                       'ok)))))
+         (main (new corout 'main (lambda ()
+                                   (write 'T)
+                                   (yield-to aux for: 1)
+                                   (write 'T)))))
+    (simple-boot main aux)))

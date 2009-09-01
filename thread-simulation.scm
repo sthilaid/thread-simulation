@@ -1,9 +1,9 @@
 
 ;; FIXME: Load calls should be removed in the final compiled version
 
-;; (include "class.scm")
-;; (load "rbtree.scm")
-;; (load "scm-lib")
+(include "class.scm")
+(load "rbtree.scm")
+(load "scm-lib")
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -428,6 +428,31 @@
 ;; resume where it left once the scheduler decides to resume it.
 (define (yield)
   (internal-yield))
+
+(define (yield-to corout #!key (for #f))
+  (letrec ((timer-thread
+            (and for
+                 (write 'A)
+                 (make-thread
+                  (let ((k (##thread-continuation-capture (current-thread))))
+                    (lambda ()
+                      (thread-sleep! for)
+                      (continuation-graft k
+                                          (lambda ()
+                                            (write (corout-id (current-corout)))
+                                            (thread-terminate! timer-thread)
+                                            (yield)
+                                            (pp 'yea)))))
+                  (gensym 'yield-to-timer))))
+           (corout-in-queue? (queue-find-and-remove! (lambda (x) (eq? x corout))
+                                                  (q))))
+    (if corout-in-queue?
+        (begin
+          (queue-push! (q) corout)
+          (and timer-thread (write 'B) (thread-start! timer-thread))
+          ;;(thread-yield!)
+          (yield))
+        #f)))
 
 ;; This will yield the work of the scheduler itselft, assuming that
 ;; the scheduler runs inside a coroutine too, i.e. that we are in a
