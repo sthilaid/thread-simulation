@@ -407,17 +407,16 @@
                                   'ok))))
         (simple-boot c1)))
 
-(define-test test-corout-timer-yield "...???" 'ok
-  (let* ((aux (new corout 'aux (lambda ()
-                                 (let loop ((i 0))
-                                   (if (< i 5)
-                                       (begin
-                                         (thread-sleep! 0.1)
-                                         (write i)
-                                         (loop (+ i 1)))
-                                       'ok)))))
-         (main (new corout 'main (lambda ()
-                                   (write 'T)
-                                   (yield-to aux for: 1)
-                                   (write 'T)))))
-    (simple-boot main aux)))
+(define-test test-corout-timer-yield "TstartT0" 'ok
+  (letrec ((fact (lambda (n acc)
+                   (if (< n 2) acc (fact (- n 1) (* n acc))))))
+    (let* ((aux (new corout 'aux (lambda ()
+                                   (write 'start)
+                                   ;; relatively long calculation
+                                   (write (modulo (fact 20000 1) 10))
+                                   'ok)))
+           (main (new corout 'main (lambda ()
+                                     (write 'T)
+                                     (yield-to aux for: 0.01)
+                                     (write 'T)))))
+      (simple-boot main aux))))

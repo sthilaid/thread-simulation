@@ -429,28 +429,23 @@
 (define (yield)
   (internal-yield))
 
+;; Warning: resolution for the timeout can't be smaller than 0.01 sec..
 (define (yield-to corout #!key (for #f))
   (letrec ((timer-thread
             (and for
-                 (write 'A)
                  (make-thread
-                  (let ((k (##thread-continuation-capture (current-thread))))
+                  (let ((t (current-thread)))
                     (lambda ()
                       (thread-sleep! for)
-                      (continuation-graft k
-                                          (lambda ()
-                                            (write (corout-id (current-corout)))
-                                            (thread-terminate! timer-thread)
-                                            (yield)
-                                            (pp 'yea)))))
+                      (thread-interrupt! t yield)))
                   (gensym 'yield-to-timer))))
            (corout-in-queue? (queue-find-and-remove! (lambda (x) (eq? x corout))
                                                   (q))))
     (if corout-in-queue?
         (begin
           (queue-push! (q) corout)
-          (and timer-thread (write 'B) (thread-start! timer-thread))
-          ;;(thread-yield!)
+          (and timer-thread (thread-start! timer-thread))
+          (thread-yield!)
           (yield))
         #f)))
 
