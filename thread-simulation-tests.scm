@@ -59,7 +59,7 @@
                                               (yield)
                                               (display #\b)))))
         (timer (start-timer! 0.001)))
-    (let ((result (boot timer (lambda (acc v) (+ acc v)) c1 c2 c3)))
+    (let ((result (boot timer + c1 c2 c3)))
       (stop-timer! timer)
       result)))
 
