@@ -28,9 +28,9 @@
          (thread (make-thread
                   (lambda ()
                     (let loop ()
+                      (thread-sleep! (timer-freq timer))
                       (if (not (timer-paused? timer))
                           (timer-time-set! timer (+ (timer-time timer) 1)))
-                      (thread-sleep! (timer-freq timer))
                       (loop))))))
     (timer-thread-set! timer thread)
     (thread-start! thread)
@@ -255,12 +255,14 @@
 ;; value of that coroutine. Exception, when current-corout is
 ;; unbound, this happens when the q is empty and no coroutine in the
 ;; sleep-q can be awaken yet.
+(define ___scheduler-is-speeping___ (gensym))
 (define (manage-return-value)
   (cond
    ((and (corout? (current-corout))
          (not (corout-sleeping? (current-corout))))
     (corout-enqueue! (q) (current-corout)))
-   ((not (corout? (current-corout)))
+   ((and (not (corout? (current-corout)))
+         (not (eq? (current-corout) ___scheduler-is-speeping___)))
     (return-value
      (if (not (return-value))
          (current-corout)
@@ -331,6 +333,10 @@
         ;; sleeping for a scaled period of time
         (thread-sleep! (/ (- next-wake-time (current-sim-time))
                           (timer-time-multiplier (timer)))))
+      ;; Make sure that result value manager knows that the
+      ;; current-corout is not a return value...
+      (current-corout ___scheduler-is-speeping___)
+      ;; continue scheduling
       (corout-scheduler)))
       
    ;; finish up the scheduling process by restoring the super
