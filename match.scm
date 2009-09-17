@@ -17,7 +17,7 @@
           ((number? gab)
            `(if (eqv? ,var ,gab) ,oui ,non))
 					((string? gab)
-					 `(if (string=? ,gab ,var) ,oui	,non))
+					 `(if (and (string? ,var) (string=? ,gab ,var)) ,oui	,non))
           ((pair? gab)
 					 (if (and (pair? (car gab))
 										(eq? (caar gab) 'unquote-splicing)

@@ -178,9 +178,11 @@
 (define-test test-continuation "210" 'done
   (let* ((c1 (new corout 'c1 (lambda () (display "1")
                                      (continue-with-thunk!
-                                      (lambda () (display "0") 'done)))))
+                                      (lambda () (display "0") 'done))
+                                     (display "oups-again!"))))
          (c2 (new corout 'c2 (lambda () (display "2")
-                                     (continue-with c1)))))
+                                     (continue-with c1)
+                                     (display "oups!")))))
     (simple-boot c2)))
 
 (define-test test-prioritized-cont "2431" 'done

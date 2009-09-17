@@ -62,16 +62,17 @@
   (slot: sleeping?)
   (slot: delta-t)
   (slot: msg-lists)
-  (constructor: (lambda (obj id thunk)
-                  (set-fields! obj corout
-                    ((id          id)
-                     (kont        (lambda (dummy) (terminate-corout (thunk))))
-                     (mailbox     (new-queue))
-                     (state-env       #f)
-                     (prioritize? #f)
-                     (sleeping?   #f)
-                     (delta-t     #f)
-                     (msg-lists   (empty-set)))))))
+  (constructor:
+   (lambda (obj id thunk)
+     (set-fields! obj corout
+       ((id          id)
+        (kont        (lambda (dummy) (terminate-corout (thunk))))
+        (mailbox     (new-queue))
+        (state-env   #f)
+        (prioritize? #f)
+        (sleeping?   #f)
+        (delta-t     #f)
+        (msg-lists   (empty-set)))))))
 
 (define (sleeping-on-mutex)    
   'sleeping-on-mutex)
@@ -600,6 +601,7 @@
         (corout-set-sleeping-mode! corout-to-wake #f)
         (corout-enqueue! (q) corout-to-wake)))
   (sem-increase! sem))
+
 
 
 

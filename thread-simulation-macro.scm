@@ -43,9 +43,7 @@
   `(terminate-corout ,continuation-corout))
 
 (define-macro (continue-with-thunk! continuation-thunk)
-  `(begin
-     (yield)
-     (,continuation-thunk)))
+  `(continue-with (new corout (gensym 'corout) ,continuation-thunk)))
 
 
 
