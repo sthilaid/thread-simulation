@@ -30,7 +30,7 @@
                     (let loop ()
                       (thread-sleep! (timer-freq timer))
                       (if (not (timer-paused? timer))
-                          (timer-time-set! timer (+ (timer-time timer) 1)))
+                          (update! timer timer time (flip + 1)))
                       (loop))))))
     (timer-thread-set! timer thread)
     (thread-start! thread)
@@ -437,24 +437,25 @@
   (internal-yield))
 
 ;; Warning: resolution for the timeout can't be smaller than 0.01 sec..
-(define (yield-to corout #!key (for #f))
-  (letrec ((timer-thread
-            (and for
-                 (make-thread
-                  (let ((t (current-thread)))
-                    (lambda ()
-                      (thread-sleep! for)
-                      (thread-interrupt! t yield)))
-                  (gensym 'yield-to-timer))))
-           (corout-in-queue? (queue-find-and-remove! (lambda (x) (eq? x corout))
-                                                  (q))))
-    (if corout-in-queue?
+(define (yield-to corout #!key (for #f) (forced-yield yield))
+  (let* ((interupt-body
+          (lambda () (if (eq? (current-corout) corout) (forced-yield))))
+         (timer-body
+          (lambda ()
+            (thread-sleep! (/ for (timer-time-multiplier (timer))))
+            (thread-interrupt! (current-thread) interupt-body)))
+         (timer-thread
+          (and for
+               (make-thread timer-body (gensym 'yield-to-timer)))))
+    ;; Ensure that the coroutine is not sleeping and removed from the
+    ;; ready-q (if it was in there).
+    (if (not (corout-sleeping? corout))
         (begin
-          (queue-push! (q) corout)
+          (queue-find-and-remove! (lambda (x) (eq? x corout)) (q))
+          (queue-push! (q) corout) ; corout is put on top of the ready queue
           (and timer-thread (thread-start! timer-thread))
-          (thread-yield!)
-          (yield))
-        #f)))
+          (thread-yield!) ; force the timer to start
+          (yield)))))
 
 ;; This will yield the work of the scheduler itselft, assuming that
 ;; the scheduler runs inside a coroutine too, i.e. that we are in a

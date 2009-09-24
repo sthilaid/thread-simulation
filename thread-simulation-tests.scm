@@ -1,4 +1,4 @@
-(include "thread-simulation-macro.scm")
+(include "thread-simulation_.scm")
 (include "test-macro.scm")
 (include "class.scm")
 (include "match.scm")
