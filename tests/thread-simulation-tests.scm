@@ -1,17 +1,18 @@
-(include "thread-simulation_.scm")
+(include "../include/scm-lib_.scm")
+(include "../include/thread-simulation_.scm")
+(include "../include/match.scm")
+(include "../include/class_.scm")
 (include "test-macro.scm")
-(include "class.scm")
-(include "match.scm")
 
 ;; Usage of load is better but cannot because of the oo system. Here
 ;; copied the thread-simulation package load requirements and include it...
-(load "rbtree.scm")
-(load "scm-lib")
-(include "scm-lib-macro.scm")
-(include "thread-simulation.scm")
+;; (load "rbtree.scm")
+;; (load "scm-lib")
+
+;;(include "thread-simulation.scm")
 
 ;;(load "thread-simulation.scm")
-(load "test")
+;;(load "test")
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

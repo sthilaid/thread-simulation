@@ -2,8 +2,9 @@
 ;; FIXME: Load calls should be removed in the final compiled version
 
 (include "class.scm")
-(load "rbtree.scm")
-(load "scm-lib")
+(include "scm-lib_.scm")
+;; (load "rbtree.scm")
+;; (load "scm-lib")
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

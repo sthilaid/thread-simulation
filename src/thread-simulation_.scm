@@ -128,8 +128,9 @@
      ((not (pair? list)) '())
      ((pred (car list)) (cons (car list) (filter pred (cdr list))))
      (else (filter pred (cdr list)))))
-  (include "match.scm")
-  ;(load "scm-lib")
+  (include "include/match.scm")
+  ;; not sure wht to do.. otherwise that lib gets loaded 2 times
+  (load "src/scm-lib.scm") 
 
   (let* ((last-pat (take-right pattern-list 1))
          (timeout-val (if (eq? (caar last-pat) 'after)
