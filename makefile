@@ -5,6 +5,9 @@ INCLUDE_PATH=$(PREFIX)/include
 LIB_PATH=$(PREFIX)/lib
 EXTERNAL_LIBS=$(PREFIX)/external-libs
 
+scm-lib-PATH=git://github.com/sthilaid/scm-lib.git
+class-PATH=git://github.com/sthilaid/class.git
+
 INCLUDE_FILES=scm-lib_.scm class.scm class_.scm match.scm thread-simulation_.scm
 LIB_FILES=scm-lib.o1 rbtree.o1 thread-simulation.o1
 
@@ -32,7 +35,7 @@ setup-scm-lib:
 	mkdir -p $(LIB_PATH)
 	mkdir -p $(EXTERNAL_LIBS)
 ifeq "$(wildcard $(EXTERNAL_LIBS)/scm-lib)" ""
-	cd $(EXTERNAL_LIBS) && git clone git://github.com/sthilaid/scm-lib.git
+	cd $(EXTERNAL_LIBS) && git clone $(scm-lib-PATH)
 endif
 	cd $(EXTERNAL_LIBS)/scm-lib && git pull
 	$(MAKE) -C $(EXTERNAL_LIBS)/scm-lib
@@ -45,7 +48,7 @@ setup-class:
 	mkdir -p $(LIB_PATH)
 	mkdir -p $(EXTERNAL_LIBS)
 ifeq "$(wildcard $(EXTERNAL_LIBS)/class)" ""
-	cd $(EXTERNAL_LIBS) && git clone git://github.com/sthilaid/class.git
+	cd $(EXTERNAL_LIBS) && git clone $(class-PATH)
 endif
 	cd $(EXTERNAL_LIBS)/class && git pull
 	$(MAKE) -C $(EXTERNAL_LIBS)/class
