@@ -2,9 +2,25 @@
 ;; FIXME: Load calls should be removed in the final compiled version
 
 (include "scm-lib_.scm")
-(include "thread-simulation_.scm")
+;;(include "thread-simulation_.scm")
 ;; (load "rbtree.scm")
 ;; (load "scm-lib")
+
+;; taken from the object system since its compatible and usefull :)
+(define-macro (update! obj class field f)
+  (define (symbol-append s1 . ss)
+    (string->symbol (apply string-append
+                           (symbol->string s1)
+                           (map symbol->string ss))))
+  (define (gen-accessor-name class-name var)
+    (symbol-append class-name '- var))
+  (define (gen-setter-name class-name var)
+    (symbol-append class-name '- var '-set!))
+  (let ((objval (gensym 'objval)))
+   `(let ((,objval ,obj))
+      (,(gen-setter-name class field) ,objval
+       (,f (,(gen-accessor-name class field) ,objval))))))
+
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
