@@ -396,6 +396,9 @@
 (define (empty-mailbox?)
   (empty-queue? (corout-mailbox (current-corout))))
 
+(define (trash-mailbox!)
+  (corout-mailbox-set! (current-corout) (new-queue)))
+
 ;; Send a message to the givent destination coroutine object.
 (define (! dest-corout msg)
   (enqueue! (corout-mailbox dest-corout) msg)
