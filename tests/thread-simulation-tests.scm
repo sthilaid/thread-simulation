@@ -415,10 +415,54 @@
     (let* ((aux (new-corout 'aux (lambda ()
                                    (write 'start)
                                    ;; relatively long calculation
-                                   (write (modulo (fact 20000 1) 10))
+                                   (write (modulo (fact 10000 1) 10))
                                    'ok)))
            (main (new-corout 'main (lambda ()
                                      (write 'T)
                                      (yield-to aux for: 0.01)
                                      (write 'T)))))
       (simple-boot main aux))))
+
+(define-test test-corout-pause "ATTAT" 'ok
+  (let* ((aux (new-corout 'aux (lambda ()
+                                 (write 'A)
+                                 (corout-pause)
+                                 (write 'A))))
+         (main (new-corout 'main (lambda ()
+                                   (write 'T)
+                                   (yield)
+                                   (write 'T)
+                                   (spawn-brother aux)
+                                   (yield)
+                                   (write 'T)
+                                   'ok))))
+    (simple-boot aux main)))
+
+(define-test test-yield-to-spec-forced-yield "TstartTT0continueT0" 'ok
+  (letrec ((fact (lambda (n acc)
+                   (if (< n 2) acc (fact (- n 1) (* n acc))))))
+    (let* ((aux (new-corout 'aux (lambda ()
+                                   (write 'start)
+                                   (write (modulo (fact 5000 1) 10))
+                                   (corout-pause)
+                                   (write 'continue)
+                                   (write (modulo (fact 5000 1) 10)))))
+           (main (new-corout 'main (lambda ()
+                                     (write 'T)
+                                     (yield-to aux
+                                               for: 0.01
+                                               forced-yield: corout-pause)
+                                     (write 'T)
+                                     (yield)
+                                     (write 'T)
+                                     (yield-to aux) ;finish up 1st calc
+                                     (yield-to aux
+                                               for: 0.01
+                                               forced-yield: corout-pause)
+                                     (yield-to aux
+                                               for: 0.01
+                                               forced-yield: corout-pause)
+                                     (write 'T)
+                                     (yield-to aux) ;finish up 2nd calc
+                                     'ok))))
+      (simple-boot main))))

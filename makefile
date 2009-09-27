@@ -10,6 +10,9 @@ scm-lib-PATH=git://github.com/sthilaid/scm-lib.git
 INCLUDE_FILES=scm-lib_.scm match.scm thread-simulation_.scm
 LIB_FILES=scm-lib.o1 rbtree.o1 thread-simulation.o1
 
+GSC=gsc
+GSI=gsi
+
 all: prefix include lib
 
 prefix:
@@ -25,7 +28,7 @@ $(INCLUDE_PATH)/%.scm: $(SRC_PATH)/%.scm
 lib: $(foreach f,$(LIB_FILES),$(LIB_PATH)/$(f))
 $(LIB_PATH)/%.o1: $(SRC_PATH)/%.scm
 	mkdir -p $(LIB_PATH)
-	gsc -o $@ $<
+	$(GSC) -o $@ $<
 
 setup-libs: setup-scm-lib 
 
@@ -48,10 +51,10 @@ TEST_RUN_FILES=$(addprefix $(LIB_PATH)/, $(LIB_FILES)) \
                $(TEST_PATH)/test.o1 \
 	             $(TEST_PATH)/thread-simulation-tests.o1
 test: $(TEST_INCLUDE_FILES) $(TEST_RUN_FILES)
-	gsi $(TEST_RUN_FILES) -e "(run-tests)"
+	$(GSI) $(TEST_RUN_FILES) -e "(run-tests)"
 
 $(TEST_PATH)/%.o1: $(TEST_PATH)/%.scm
-	gsc -o $@ $<
+	$(GSC) -o $@ $<
 
 
 clean:
