@@ -487,25 +487,12 @@
   (internal-yield))
 
 ;; Warning: resolution for the timeout can't be smaller than 0.01 sec..
-(define (yield-to corout #!key (for #f) (forced-yield yield))
-  (let* ((interupt-body
-          (lambda () (if (eq? (current-corout) corout) (forced-yield))))
-         (timer-body
-          (lambda ()
-            (thread-sleep! (/ for (timer-time-multiplier (timer))))
-            (thread-interrupt! (current-thread) interupt-body)))
-         (timer-thread
-          (and for
-               (make-thread timer-body (gensym 'yield-to-timer)))))
-    ;; Ensure that the coroutine is not sleeping and removed from the
-    ;; ready-q (if it was in there).
-    (if (not (corout-sleeping? corout))
-        (begin
-          (queue-find-and-remove! (lambda (x) (eq? x corout)) (q))
-          (queue-push! (q) corout) ; corout is put on top of the ready queue
-          (and timer-thread (thread-start! timer-thread))
-          (thread-yield!) ; force the timer to start
-          (yield)))))
+(define (yield-to corout)
+  (if (not (corout-sleeping? corout))
+      (begin
+        (queue-find-and-remove! (lambda (x) (eq? x corout)) (q))
+        (queue-push! (q) corout) ; corout is put on top of the ready queue
+        (yield))))
 
 ;; This will yield the work of the scheduler itselft, assuming that
 ;; the scheduler runs inside a coroutine too, i.e. that we are in a

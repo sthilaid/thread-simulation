@@ -13,6 +13,10 @@ LIB_FILES=scm-lib.o1 rbtree.o1 thread-simulation.o1
 GSC=gsc
 GSI=gsi
 
+## Developement modes {distributed,local}, local opts will not pull
+## the dependencies
+DEV_MODE=distributed 
+
 all: prefix include lib
 
 prefix:
@@ -32,6 +36,7 @@ $(LIB_PATH)/%.o1: $(SRC_PATH)/%.scm
 
 setup-libs: setup-scm-lib 
 
+ifneq "$(DEV_MODE)" "local"
 $(SRC_PATH)/scm-lib.scm $(SRC_PATH)/scm-lib_.scm: setup-scm-lib
 setup-scm-lib:
 	mkdir -p $(LIB_PATH)
@@ -44,7 +49,7 @@ endif
 	cp $(EXTERNAL_LIBS)/scm-lib/include/* $(SRC_PATH)/
 	cp $(EXTERNAL_LIBS)/scm-lib/src/* $(SRC_PATH)/
 	cp $(EXTERNAL_LIBS)/scm-lib/lib/* $(LIB_PATH)/
-
+endif
 
 TEST_INCLUDE_FILES=$(addprefix $(INCLUDE_PATH)/, $(INCLUDE_FILES))
 TEST_RUN_FILES=$(addprefix $(LIB_PATH)/, $(LIB_FILES)) \
