@@ -5,8 +5,7 @@ INCLUDE_PATH=$(PREFIX)/include
 LIB_PATH=$(PREFIX)/lib
 EXTERNAL_LIBS=$(PREFIX)/external-libs
 
-scm-lib-PATH=git://github.com/sthilaid/scm-lib.git
-export scm-lib-PATH
+export scm-lib-PATH=git://github.com/sthilaid/scm-lib.git
 
 INCLUDE_FILES=scm-lib_.scm match.scm thread-simulation_.scm
 LIB_FILES=scm-lib.o1 rbtree.o1 thread-simulation.o1
