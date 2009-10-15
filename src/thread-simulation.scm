@@ -72,23 +72,21 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (define-type corout id kont mailbox state-env
-                    prioritize? sleeping? delta-t msg-lists)
+                    sleeping? delta-t msg-lists)
 (define (new-corout id thunk)
   (let ((kont (lambda (dummy) (terminate-corout (thunk))))
         (mailbox (new-queue))
         (state-env #f)
-        (prioritize? #f)
         (sleeping? #f)
         (delta-t #f)
         (msg-lists (empty-set)))
    (make-corout id kont mailbox state-env 
-                prioritize? sleeping? delta-t msg-lists)))
+                sleeping? delta-t msg-lists)))
 ;; (define-class corout ()
 ;;   (slot: id)
 ;;   (slot: kont)
 ;;   (slot: mailbox)
 ;;   (slot: state-env) ;; should be unprintable
-;;   (slot: prioritize?)
 ;;   (slot: sleeping?)
 ;;   (slot: delta-t)
 ;;   (slot: msg-lists)
@@ -99,7 +97,6 @@
 ;;         (kont        (lambda (dummy) (terminate-corout (thunk))))
 ;;         (mailbox     (new-queue))
 ;;         (state-env   #f)
-;;         (prioritize? #f)
 ;;         (sleeping?   #f)
 ;;         (delta-t     #f)
 ;;         (msg-lists   (empty-set)))))))
@@ -157,19 +154,10 @@
 ;; (define-class sem () (slot: value) (slot: wait-queue))
 
 ;; Must be used to enqueue a coroutine in the coroutine active
-;; queue. The sleep queue *must not* use otherwise, it will result in
-;; an infinite loop if a coroutine is to be prioritized.
+;; queue. 
 (define (corout-enqueue! q corout)
-  (if (corout-prioritize? corout)
-      (queue-push! q corout)
-      (enqueue! q corout)))
+  (enqueue! q corout))
 
-;; A prioritized coroutine will be scheduled as the next coroutine to
-;; run, if scheduled with corout-enqueue!.
-(define (prioritize! c)
-  (corout-prioritize?-set! c #t))
-(define (unprioritize! c)
-  (corout-prioritize?-set! c #f))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; time related sleep queue
@@ -535,25 +523,30 @@
 ;; accumulated return value and val is the last returned value by a
 ;; coroutine. The accumulated value will be return when the scheduling
 ;; process finishes.
-(define (boot used-timer return-handler c1 . cs)
-  (continuation-capture
-   (lambda (k)
-     (begin
-       (let ((fresh-start? (unbound? (current-corout))))
-         (if (not fresh-start?) (parent-state (save-state)))
-         (root-k               k)
-         (current-corout       #f)
-         (q                    (new-queue))
-         (timer                used-timer)
-         (time-sleep-q         (make-time-sleep-q))
-         (return-value-handler return-handler)
-         (return-value         #f)
-         (dynamic-handlers     '())
-         (sleeping-coroutines  0)
-         (if fresh-start? (parent-state #f)))
-       (for-each (lambda (c) (corout-enqueue! (q) c))
-                 (cons c1 cs))
-       (corout-scheduler)))))
+(define (boot coroutines
+              #!optional (used-timer (start-timer! 0.001))
+                         (return-handler (lambda (acc val) val)))
+  (let ((result
+         (continuation-capture
+          (lambda (k)
+            (begin
+              (let ((fresh-start? (unbound? (current-corout))))
+                (if (not fresh-start?) (parent-state (save-state)))
+                (root-k               k)
+                (current-corout       #f)
+                (q                    (new-queue))
+                (timer                used-timer)
+                (time-sleep-q         (make-time-sleep-q))
+                (return-value-handler return-handler)
+                (return-value         #f)
+                (dynamic-handlers     '())
+                (sleeping-coroutines  0)
+                (if fresh-start? (parent-state #f)))
+              (for-each (lambda (c) (corout-enqueue! (q) c))
+                        coroutines)
+              (corout-scheduler))))))
+    (stop-timer! used-timer)
+    result))
 
 
 ;; Kills all the currently executing coroutines. This will operate on
