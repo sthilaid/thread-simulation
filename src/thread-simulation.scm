@@ -346,21 +346,18 @@
              (corout-enqueue! (q) corout-to-wake)))))
 
 (define (resume-coroutine)
-  (continuation-capture
-   (lambda (k)
-     (return-to-sched k)
-     (let ((kontinuation (corout-kont (current-corout))))
-       ;; if it is a statefull coroutine
-       ;; (executing a scheduler) then restore its
-       ;; environnement
-       (if (corout-state-env (current-corout))
-           (let ((state (save-state)))
-             (restore-state (corout-state-env (current-corout)))
-             (parent-state state)))
-       ;; run the coroutine
-       (if (procedure? kontinuation)
-           (kontinuation 'go)
-           (continuation-return kontinuation 'go))))))
+  (let ((kontinuation (corout-kont (current-corout))))
+    ;; if it is a statefull coroutine
+    ;; (executing a scheduler) then restore its
+    ;; environnement
+    (if (corout-state-env (current-corout))
+        (let ((state (save-state)))
+          (restore-state (corout-state-env (current-corout)))
+          (parent-state state)))
+    ;; run the coroutine
+    (if (procedure? kontinuation)
+        (kontinuation 'go)
+        (continuation-return kontinuation 'go))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Scheduler
@@ -381,15 +378,10 @@
   ;; Get the next coroutine, if one is available
   (current-corout (dequeue! (q)))
 
-  ;; if there is one coroutine, run it, else stop the coroutine
-  ;; scheduler.
   (cond
-   ((corout? (current-corout))
 
-    (resume-coroutine)
-
-    ;; loop the scheduler, if the coroutine finished
-    (corout-scheduler))
+   ;; if there is one coroutine, run it
+   ((corout? (current-corout)) (resume-coroutine))
 
    ;; If only sleeping coroutines are left, sleep for a while
    ((not (time-sleep-q-empty? (time-sleep-q)))
@@ -417,8 +409,7 @@
 
 
 ;; Simple abstraction that just resumes the scheduler's calculation
-(define (resume-scheduling)
-  (continuation-return (return-to-sched) 'back-in-sched))
+(define resume-scheduling corout-scheduler)
 
 ;; Semaphore's internals 
 (define (sem-increase! sem) (sem-value-set! sem (+ (sem-value sem) 1)))
