@@ -15,7 +15,7 @@
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Thread Simulation Tests
+;;; Thread Simulation Tests
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (define-test simple-test "A1B2" 3
@@ -29,7 +29,8 @@
                               (yield)
                               (display 2)
                               (terminate-corout 3)))))
-    (boot (list c1 c2))))
+    (boot (list c1 c2))
+    (corout-get-result c2)))
 
 (define-test test-kill-all "12" 'killed-all
   (let ((c1 (new-corout 'c1 (lambda ()
@@ -58,8 +59,8 @@
                                               (terminate-corout 3)
                                               (yield)
                                               (display #\b))))))
-    (boot (list c1 c2 c3) (start-timer! 0.001) +)))
-
+    (boot (list c1 c2 c3) (start-timer! 0.001))
+    (fold-l + 0 (map corout-get-result (list c1 c2 c3)))))
 
 (define-test test-mailboxes
   (string-append "sending-data-from-c2\n"
@@ -77,7 +78,8 @@
            (c3 (new-corout 'c3 (lambda ()
                                  (pretty-print 'sending-data-from-c3)
                                  (! c1 'salut)))))
-    (boot (list c1 c2 c3))))
+    (boot (list c1 c2 c3))
+    (corout-get-result c1)))
 
 
 (define-test test-recursive-sim "A12BA12BA12B" 'meta-12-done!
@@ -106,7 +108,8 @@
                       (lambda ()
                         (boot (list s1 s2))
                         'meta-12-done!))))
-    (boot (list meta-AB meta-12))))
+    (boot (list meta-AB meta-12))
+    (corout-get-result meta-12)))
 
 (define-test test-kill-all-rec "A1B2ABAB" 'meta-AB-done!
   (let* ((sA (new-corout 'sA (lambda () (for i 0 (< i 3)
@@ -137,7 +140,8 @@
                       (lambda ()
                         (boot (list s1 s2))
                         'meta-12-done!))))
-    (boot (list  meta-AB meta-12))))
+    (boot (list  meta-AB meta-12))
+    (corout-get-result meta-AB)))
 
 
 ;; We are here expecting that running 5 times inside the scheduler
@@ -180,7 +184,8 @@
          (c2 (new-corout 'c2 (lambda () (display "2")
                                      (continue-with c1)
                                      (display "oups!")))))
-    (boot (list c2))))
+    (boot (list c2))
+    'done))
 
 (define-test test-thunk-composition "123" 'ok
   (let* ((t1 (lambda () (display "1")))
@@ -188,7 +193,8 @@
          (t3 (lambda () (display "3") 'ok))
          (c1 (new-corout
               'c1 (compose-thunks t1 t2 t3))))
-    (boot (list c1))))
+    (boot (list c1))
+    'ok))
 
 (define-test test-spawning "CABD" 'done
   (let* ((c1 (new-corout 'c1 (lambda () (display 'A))))
@@ -198,7 +204,8 @@
                                      (spawn-brother-thunk 'c2 t2)
                                      (yield)
                                      (display 'D)))))
-    (boot (list c3))))
+    (boot (list c3))
+    'done))
 
 (define-test test-extended-mailboxes
   (string-append "c2-sent-data\n"
@@ -217,7 +224,8 @@
                                (sleep-for 0.2)
                                (! c1 3)
                                (pretty-print 'c3-sent-data)))))
-    (boot (list c1 c2 c3))))
+    (boot (list c1 c2 c3))
+    (corout-get-result c1)))
 
 (define-test test-timeout-? "1ok" 'done
   (let* ((c1 (new-corout 'c1 (lambda () (with-exception-catcher
@@ -227,7 +235,8 @@
                                            (display (? timeout: 0.1))))
                                      'done)))
          (c2 (new-corout 'c2 (lambda () (! c1 1)))))
-    (boot (list c1 c2))))
+    (boot (list c1 c2))
+    (corout-get-result c1)))
 
 (define-test test-timeout-?? "3ok" 'done
   (let* ((c1 (new-corout 'c1 (lambda () (with-exception-catcher
@@ -237,7 +246,8 @@
                                            (display (?? odd? timeout: 0.2))))
                                      'done)))
          (c2 (new-corout 'c2 (lambda () (! c1 2) (yield) (! c1 3)))))
-    (boot (list c1 c2))))
+    (boot (list c1 c2))
+    (corout-get-result c1)))
 
 (define-test test-timeout-extended "allogot-nothing" 'done
   (let* ((c1 (new-corout 'c1 (lambda ()
@@ -249,7 +259,8 @@
                                      (else (display 'got-nothing)))
                                'done)))
          (c2 (new-corout 'c2 (lambda () (! c1 'allo)))))
-    (boot (list c1 c2))))
+    (boot (list c1 c2))
+    (corout-get-result c1)))
 
 (define-test test-recv "pongpingfinished!" 'done
   (let* ((c1 (new-corout 'c1 (lambda ()
@@ -260,7 +271,8 @@
                                   (after 0.1 (display 'finished!) 'done))))))
          (c2 (new-corout 'c2 (lambda () (! c1 'pong))))
          (c3 (new-corout 'c3 (lambda () (! c1 'ping)))))
-    (boot (list c1 c2 c3))))
+    (boot (list c1 c2 c3))
+    (corout-get-result c1)))
 
 (define-test test-recv-ext "pong1pong2pong" 'ok
   (let* ((c1 (new-corout 'c1 (lambda ()
@@ -283,7 +295,8 @@
                                  (display 'pong)
                                  (recv ((ack ,n) (display n)))
                                  (loop))))))
-    (boot (list c1 c2 c3))))
+    (boot (list c1 c2 c3))
+    'ok))
 
 (define-test test-msg-lists "alloallosalut#tallo" 'salut
   (let ((c1 (new-corout 'c1 (lambda ()
@@ -309,7 +322,8 @@
                               (yield)
                               (broadcast 'toto 'salut)
                               (yield)))))
-    (boot (list c1 c2 c4 c3))))
+    (boot (list c1 c2 c4 c3))
+    (corout-get-result c4)))
 
 (define-test test-dynamic-handlers "allononotutututuallono" 'ok
   (let ((c1 (new-corout 'c1 (lambda ()
@@ -337,7 +351,8 @@
                                    ((allo (display 'allo)))
                                    (recv (after 0.02 (display 'no))))
                                    'ok))))
-        (boot (list c1))))
+        (boot (list c1))
+        (corout-get-result c1)))
 
 (define-test test-msg-box-cleaning "allo" 3
   (let ((c1 (new-corout 'c1 (lambda ()
@@ -351,7 +366,8 @@
                               (broadcast 'toto 'allo)
                               (broadcast 'toto 'allo)
                               (broadcast 'toto 'allo)))))
-    (boot (list c1 c2))))
+    (boot (list c1 c2))
+    (corout-get-result c1)))
 
 (define-test test-after0 "noallo" 'done
   (let ((c1 (new-corout 'c1 (lambda ()
@@ -362,7 +378,8 @@
                               (recv (allo (display 'allo))
                                     (after 0 (display 'no)))
                               'done))))
-    (boot (list c1))))
+    (boot (list c1))
+    (corout-get-result c1)))
 
 (define-test test-deadlock-detection "" 'ok
   (let ((c1 (new-corout 'c1 (lambda () (?))))
@@ -394,7 +411,8 @@
                                    (recv (toto (display 'toto))
                                          (after 0.02 (display 'no))))
                                   'ok))))
-        (boot (list c1))))
+        (boot (list c1))
+        (corout-get-result c1)))
 
 (define-test test-corout-pause "ATTAT" 'ok
   (let* ((aux (new-corout 'aux (lambda ()
@@ -409,6 +427,5 @@
                                    (yield)
                                    (write 'T)
                                    'ok))))
-    (boot (list aux main))))
-
-
+    (boot (list aux main))
+    (corout-get-result main)))
