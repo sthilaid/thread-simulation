@@ -10,8 +10,8 @@ export scm-lib-PATH=git://github.com/sthilaid/scm-lib.git
 INCLUDE_FILES=scm-lib_.scm match.scm thread-simulation_.scm
 LIB_FILES=scm-lib.o1 rbtree.o1 thread-simulation.o1
 
-GSC=gsc
-GSI=gsi
+GSC=gsc -debug
+GSI=gsi -:dar
 
 ## Developement modes {distributed,local}, local opts will not pull
 ## the dependencies

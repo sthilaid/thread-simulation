@@ -155,6 +155,7 @@
                ,(generate-predicate asts)
                ,mailbox)
               => ,(generate-on-msg-found asts))
+
              ;; Dynamic handlers processing, loop back to continue to
              ;; wait for the messages
              ,(if use-dynamic-handlers?
@@ -162,6 +163,7 @@
                                 (dynamic-handlers))
                     => (lambda (res) (unbox res) (,loop)))
                   `(#f 'i-hope-this-is-optimized...))
+
              ;; if no acceptable message found, sleep
              (else
               ,(cond
@@ -175,7 +177,7 @@
                               (corout-set-sleeping-mode!
                                corout
                                (sleeping-on-msg))
-                              (resume-scheduling))))
+                              (corout-scheduler))))
                          (,loop)))
                 (else
                  `(let ((msg-q-size (queue-size ,mailbox)))
