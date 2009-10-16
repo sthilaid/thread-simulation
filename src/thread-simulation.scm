@@ -290,15 +290,7 @@
       (set! ___internal-state___ state)
       (begin
         ;; un-initializing the global simulation state
-        (current-corout       unbound)
-        (q                    unbound)
-        (timer                unbound)
-        (time-sleep-q         unbound)
-        (root-k               unbound)
-        (return-to-sched      unbound)
-        (parent-state         unbound)
-        (dynamic-handlers     unbound)
-        (sleeping-coroutines  unbound))))
+        (set! ___internal-state___ unbound))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -524,7 +516,9 @@
   (resume-scheduling))
 
 ;; Starts the scheduling of the givent coroutines with a specific
-;; return value handler. 
+;; return value handler.  The used timer optionnal parameter is only
+;; significant for the primordial system. In recursive cases the
+;; primodordial timer will be shared to children systems.
 (define (boot coroutines
               #!optional (used-timer (start-timer! 0.001)))
   (let ((result
@@ -535,17 +529,18 @@
                 (if fresh-start?
                     (begin
                       (set! ___internal-state___ (make-fresh-state))
-                      (parent-state #f))
-                    (parent-state (save-state)))
+                      (parent-state #f)
+                      (timer used-timer))
+                    (begin
+                      (parent-state (save-state))
+                      (timer (timer))))
                 (root-k               k)
                 (current-corout       #f)
                 (q                    (new-queue))
-                (timer                used-timer)
                 (time-sleep-q         (make-time-sleep-q))
                 (dynamic-handlers     '())
                 (sleeping-coroutines  0))
-              (for-each (lambda (c) (corout-enqueue! (q) c))
-                        coroutines)
+              (for-each (curry2 corout-enqueue! (q)) coroutines)
               (corout-scheduler))))))
     (stop-timer! used-timer)
     result))
