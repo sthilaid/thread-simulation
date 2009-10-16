@@ -28,12 +28,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (define-type timer time freq paused? thread time-multiplier)
-;; (define-class timer ()
-;;   (slot: time)
-;;   (slot: freq)
-;;   (slot: paused?)
-;;   (slot: thread)
-;;   (slot: time-multiplier))
 
 ;; the timer uses an integer time value so that it will enable the use
 ;; of bignums for precise long simulations. That's why the freq
@@ -93,25 +87,6 @@
       (raise 'coroutine-not-terminated-exception)
       (corout-result c)))
 
-;; (define-class corout ()
-;;   (slot: id)
-;;   (slot: kont)
-;;   (slot: mailbox)
-;;   (slot: state-env) ;; should be unprintable
-;;   (slot: sleeping?)
-;;   (slot: delta-t)
-;;   (slot: msg-lists)
-;;   (constructor:
-;;    (lambda (obj id thunk)
-;;      (set-fields! obj corout
-;;        ((id          id)
-;;         (kont        (lambda (dummy) (terminate-corout (thunk))))
-;;         (mailbox     (new-queue))
-;;         (state-env   #f)
-;;         (sleeping?   #f)
-;;         (delta-t     #f)
-;;         (msg-lists   (empty-set)))))))
-
 (define (sleeping-on-mutex)    
   'sleeping-on-mutex)
 (define (sleeping-on-msg)    
@@ -153,19 +128,7 @@
   (make-state unbound unbound unbound unbound unbound
               unbound
               unbound unbound unbound))
-;; (define-class state ()
-;;   (slot: current-corout)
-;;   (slot: q)
-;;   (slot: timer)
-;;   (slot: time-sleep-q)
-;;   (slot: root-k)
-;;   (slot: return-to-sched)
-;;   (slot: parent-state) ;unprintable:
-;;   (slot: dynamic-handlers)
-;;   (slot: sleeping-coroutines))
-
 (define-type sem value wait-queue)
-;; (define-class sem () (slot: value) (slot: wait-queue))
 
 ;; Must be used to enqueue a coroutine in the coroutine active
 ;; queue. 
