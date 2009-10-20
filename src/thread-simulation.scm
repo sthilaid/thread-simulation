@@ -121,12 +121,10 @@
   (dequeue! (corout-mailbox thrd)))
 
 (define-type state current-corout q timer time-sleep-q root-k
-                   return-to-sched
                    parent-state dynamic-handlers sleeping-coroutines)
 
 (define (make-fresh-state)
   (make-state unbound unbound unbound unbound unbound
-              unbound
               unbound unbound unbound))
 (define-type sem value wait-queue)
 
@@ -200,11 +198,6 @@
       (state-parent-state-set! ___internal-state___ (car new-val))
       (state-parent-state ___internal-state___)))
 
-(define (return-to-sched . new-val)
-  (if (pair? new-val)
-      (state-return-to-sched-set! ___internal-state___ (car new-val))
-      (state-return-to-sched ___internal-state___)))
-
 (define (dynamic-handlers . new-val)
   (if (pair? new-val)
       (state-dynamic-handlers-set! ___internal-state___ (car new-val))
@@ -241,7 +234,6 @@
                   (timer)
                   (time-sleep-q)
                   (root-k)
-                  (return-to-sched)
                   (parent-state)
                   (dynamic-handlers)
                   (sleeping-coroutines))
