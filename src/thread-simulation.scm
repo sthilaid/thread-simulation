@@ -389,7 +389,9 @@
          (corout-set-sleeping-mode! dest-corout #f)
          (corout-enqueue! (q) dest-corout))))
 
-(define (? #!key (timeout 'infinity))
+(define undefined-timeout-val (gensym))
+
+(define (? #!key (timeout 'infinity) (timeout-val undefined-timeout-val))
   (let ((mailbox (corout-mailbox (current-corout))))
     (if (empty-queue? mailbox)
         (if (not (eq? timeout 'infinity))
@@ -401,10 +403,12 @@
                  (corout-set-sleeping-mode! corout (sleeping-on-msg))
                  (corout-scheduler))))))
     (if (empty-queue? mailbox)
-        (raise mailbox-timeout-exception)
+        (if (eq? timeout-val undefined-timeout-val)
+            (raise mailbox-timeout-exception)
+            timeout-val)
         (dequeue! mailbox))))
 
-(define (?? pred #!key (timeout 'infinity))
+(define (?? pred #!key (timeout 'infinity) (timeout-val undefined-timeout-val))
   (define mailbox (corout-mailbox (current-corout)))
   (let loop ()
     (cond ((queue-find-and-remove! pred mailbox)
@@ -415,7 +419,9 @@
                  (sleep-for timeout interruptible?: #t)
                  ;; might be awoken either from a (!) or timeout
                  (if (= (queue-size mailbox) msg-q-size)
-                     (raise mailbox-timeout-exception)
+                     (if (eq? timeout-val undefined-timeout-val)
+                         (raise mailbox-timeout-exception)
+                         timeout-val)
                      (loop)))
                (begin (continuation-capture
                        (lambda (k)

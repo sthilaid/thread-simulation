@@ -227,22 +227,26 @@
     (boot (list c1 c2 c3))
     (corout-get-result c1)))
 
-(define-test test-timeout-? "1ok" 'done
+(define-test test-timeout-? "12ok" 'done
   (let* ((c1 (new-corout 'c1 (lambda () (with-exception-catcher
                                          (lambda (e) (display 'ok))
                                          (lambda ()
                                            (display (?))
+                                           (display (? timeout: 0.
+                                                       timeout-val: 2))
                                            (display (? timeout: 0.1))))
                                      'done)))
          (c2 (new-corout 'c2 (lambda () (! c1 1)))))
     (boot (list c1 c2))
     (corout-get-result c1)))
 
-(define-test test-timeout-?? "3ok" 'done
+(define-test test-timeout-?? "35ok" 'done
   (let* ((c1 (new-corout 'c1 (lambda () (with-exception-catcher
                                          (lambda (e) (display 'ok))
                                          (lambda ()
                                            (display (?? odd? timeout: 1))
+                                           (display (?? odd? timeout: 1
+                                                        timeout-val: 5))
                                            (display (?? odd? timeout: 0.2))))
                                      'done)))
          (c2 (new-corout 'c2 (lambda () (! c1 2) (yield) (! c1 3)))))
